@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Snake Game - Mobile</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
+      color: #fff;
+      overflow: hidden;
+    }
+
+    h1 {
+      margin: 10px;
+      font-size: 1.8rem;
+      text-shadow: 0 0 10px cyan;
+    }
+
+    #gameBoard {
+      background: #111;
+      border: 3px solid cyan;
+      border-radius: 10px;
+      display: block;
+    }
+
+    #scoreBoard {
+      margin: 10px;
+      font-size: 1.2rem;
+      text-align: center;
+    }
+
+    .btn-container {
+      margin-top: 15px;
+      display: grid;
+      grid-template-columns: repeat(3, 70px);
+      grid-template-rows: repeat(3, 70px);
+      gap: 10px;
+      justify-content: center;
+    }
+
+    button {
+      width: 70px;
+      height: 70px;
+      border: none;
+      border-radius: 50%;
+      background: linear-gradient(145deg, #00c6ff, #0072ff);
+      color: white;
+      font-size: 1.5rem;
+      font-weight: bold;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+      cursor: pointer;
+      transition: 0.2s;
+    }
+
+    button:active {
+      transform: scale(0.9);
+      box-shadow: 0 2px 5px rgba(0,0,0,0.7);
+    }
+
+    .controls {
+      margin-top: 15px;
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .controls button {
+      width: auto;
+      padding: 10px 20px;
+      border-radius: 12px;
+      font-size: 1rem;
+    }
+  </style>
+</head>
+<body>
+  <h1>🐍 Snake Game</h1>
+  <canvas id="gameBoard" width="300" height="300"></canvas>
+  <div id="scoreBoard">
+    Score: <span id="score">0</span> | High Score: <span id="highScore">0</span>
+  </div>
+
+  <!-- Arrow Buttons -->
+  <div class="btn-container">
+    <div></div>
+    <button id="up">▲</button>
+    <div></div>
+    <button id="left">◀</button>
+    <div></div>
+    <button id="right">▶</button>
+    <div></div>
+    <button id="down">▼</button>
+    <div></div>
+  </div>
+
+  <!-- Control Buttons -->
+  <div class="controls">
+    <button id="start">Start</button>
+    <button id="pause">Pause</button>
+    <button id="restart">Restart</button>
+  </div>
+
+  <script>
+    const canvas = document.getElementById("gameBoard");
+    const ctx = canvas.getContext("2d");
+    const scoreEl = document.getElementById("score");
+    const highScoreEl = document.getElementById("highScore");
+
+    let box = 15;
+    let snake, food, dx, dy, score, game, paused;
+
+    // Load High Score
+    let highScore = localStorage.getItem("snakeHighScore") || 0;
+    highScoreEl.textContent = highScore;
+
+    function init() {
+      snake = [{x: 9 * box, y: 9 * box}];
+      food = {
+        x: Math.floor(Math.random()* (canvas.width/box)) * box,
+        y: Math.floor(Math.random()* (canvas.height/box)) * box
+      };
+      dx = box;
+      dy = 0;
+      score = 0;
+      paused = false;
+      scoreEl.textContent = score;
+    }
+
+    function drawGame() {
+      if (paused) return;
+
+      ctx.fillStyle = "#000";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // Draw food
+      ctx.fillStyle = "red";
+      ctx.fillRect(food.x, food.y, box, box);
+
+      // Draw snake
+      for (let i = 0; i < snake.length; i++) {
+        ctx.fillStyle = i === 0 ? "lime" : "green";
+        ctx.fillRect(snake[i].x, snake[i].y, box, box);
+        ctx.strokeStyle = "#111";
+        ctx.strokeRect(snake[i].x, snake[i].y, box, box);
+      }
+
+      // Snake movement
+      let headX = snake[0].x + dx;
+      let headY = snake[0].y + dy;
+
+      // Eat food
+      if (headX === food.x && headY === food.y) {
+        score++;
+        scoreEl.textContent = score;
+        food = {
+          x: Math.floor(Math.random()* (canvas.width/box)) * box,
+          y: Math.floor(Math.random()* (canvas.height/box)) * box
+        };
+      } else {
+        snake.pop();
+      }
+
+      let newHead = {x: headX, y: headY};
+
+      // Game Over conditions
+      if (
+        headX < 0 || headY < 0 ||
+        headX >= canvas.width || headY >= canvas.height ||
+        collision(newHead, snake)
+      ) {
+        clearInterval(game);
+        if (score > highScore) {
+          highScore = score;
+          localStorage.setItem("snakeHighScore", highScore);
+        }
+        highScoreEl.textContent = highScore;
+        alert("Game Over! Final Score: " + score);
+        return;
+      }
+
+      snake.unshift(newHead);
+    }
+
+    function collision(head, array) {
+      for (let i = 0; i < array.length; i++) {
+        if (head.x === array[i].x && head.y === array[i].y) return true;
+      }
+      return false;
+    }
+
+    function startGame() {
+      init();
+      clearInterval(game);
+      game = setInterval(drawGame, 100);
+    }
+
+    document.getElementById("start").onclick = startGame;
+    document.getElementById("pause").onclick = () => paused = !paused;
+    document.getElementById("restart").onclick = startGame;
+
+    // Direction controls
+    document.getElementById("up").onclick = () => { if (dy === 0) { dx = 0; dy = -box; } };
+    document.getElementById("down").onclick = () => { if (dy === 0) { dx = 0; dy = box; } };
+    document.getElementById("left").onclick = () => { if (dx === 0) { dx = -box; dy = 0; } };
+    document.getElementById("right").onclick = () => { if (dx === 0) { dx = box; dy = 0; } };
+
+    // Keyboard support
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "ArrowUp" && dy === 0) { dx = 0; dy = -box; }
+      else if (e.key === "ArrowDown" && dy === 0) { dx = 0; dy = box; }
+      else if (e.key === "ArrowLeft" && dx === 0) { dx = -box; dy = 0; }
+      else if (e.key === "ArrowRight" && dx === 0) { dx = box; dy = 0; }
+    });
+  </script>
+</body>
+</html>
